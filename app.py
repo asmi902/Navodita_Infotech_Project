@@ -1,5 +1,8 @@
-import pickle
+import pandas as pd
+import numpy as np
 import streamlit as st
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import StandardScaler
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
@@ -10,6 +13,30 @@ CLIENT_SECRET = "cfc4944866a943c9984b87cce8167b91"
 # Initialize the Spotify client
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+
+# Load data from CSV file
+@st.cache_data  # Cache the dataset for faster reloads
+def load_data():
+    return pd.read_csv("data/dataset.csv")
+
+music = load_data()
+
+# Preprocessing for Similarity Calculation
+@st.cache_data
+def calculate_similarity(df):
+    # Select relevant numerical features for similarity calculation
+    features = ['danceability', 'energy', 'valence', 'tempo', 'speechiness', 
+                'acousticness', 'instrumentalness', 'liveness']
+    
+    # Scale the features to normalize values
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(df[features])
+    
+    # Compute cosine similarity
+    similarity_matrix = cosine_similarity(scaled_features)
+    return similarity_matrix
+
+similarity = calculate_similarity(music)
 
 def get_song_album_cover_url(song_name, artist_name):
     search_query = f"track:{song_name} artist:{artist_name}"
@@ -23,14 +50,16 @@ def get_song_album_cover_url(song_name, artist_name):
         return "https://i.postimg.cc/0QNxYz4V/social.png"
 
 def recommend(song):
-    index = music[music['song'] == song].index[0]
-    distances = sorted(list(enumerate(similarity[index])), reverse=True, key=lambda x: x[1])
+    index = music[music['track_name'] == song].index[0]
+    distances = list(enumerate(similarity[index]))
+    distances = sorted(distances, reverse=True, key=lambda x: x[1])  # Sort by similarity score
+    
     recommended_music_names = []
     recommended_music_posters = []
     for i in distances[1:4]:  # Recommend only 3 songs
-        artist = music.iloc[i[0]].artist
-        recommended_music_posters.append(get_song_album_cover_url(music.iloc[i[0]].song, artist))
-        recommended_music_names.append(music.iloc[i[0]].song)
+        artist = music.iloc[i[0]].artists
+        recommended_music_posters.append(get_song_album_cover_url(music.iloc[i[0]].track_name, artist))
+        recommended_music_names.append(music.iloc[i[0]].track_name)
 
     return recommended_music_names, recommended_music_posters
 
@@ -41,12 +70,8 @@ st.markdown("<style>body {background-color: #f7f9fc;}</style>", unsafe_allow_htm
 st.title('🎶 Music Recommender System')
 st.subheader('Discover your next favorite song!')
 
-# Load data
-music = pickle.load(open('df.pkl', 'rb'))
-similarity = pickle.load(open('similarity.pkl', 'rb'))
-
 # User Input
-music_list = music['song'].values
+music_list = music['track_name'].values
 selected_song = st.selectbox(
     "Type or select a song from the dropdown",
     music_list,
