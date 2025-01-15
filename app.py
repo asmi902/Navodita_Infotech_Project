@@ -6,22 +6,18 @@ from sklearn.preprocessing import StandardScaler
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
-# Spotify API Credentials
 CLIENT_ID = "4da10aae52c04c8ab5c4a5300212c9d5"
 CLIENT_SECRET = "cfc4944866a943c9984b87cce8167b91"
 
-# Initialize Spotify client
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
-# Load data from CSV file
 @st.cache_data  # Cache dataset for faster reloads
 def load_data():
     return pd.read_csv("data/dataset.csv")
 
 music = load_data()
 
-# Validate dataset columns
 required_columns = ['track_name', 'artists', 'danceability', 'energy', 'valence', 
                     'tempo', 'speechiness', 'acousticness', 'instrumentalness', 'liveness']
 
@@ -56,7 +52,6 @@ def get_song_album_cover_url(song_name, artist_name):
         st.warning(f"Error fetching album cover: {e}")
         return "https://i.postimg.cc/0QNxYz4V/social.png"
 
-# Recommendation Logic
 def recommend(song):
     try:
         index = music[music['track_name'] == song].index[0]
@@ -86,7 +81,6 @@ st.subheader('Discover your next favorite song!')
 if st.checkbox("Show Dataset"):
     st.dataframe(music.head())
 
-# User Input
 music_list = music['track_name'].values
 selected_song = st.selectbox(
     "Type or select a song from the dropdown",
@@ -101,7 +95,6 @@ if st.button('Show Recommendation'):
         st.markdown("---")
         st.subheader(f"If you like '{selected_song}', you might also enjoy:")
 
-        # Display recommendations in a visually appealing layout
         cols = st.columns(3, gap="large")
         for i, col in enumerate(cols):
             with col:
